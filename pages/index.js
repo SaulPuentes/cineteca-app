@@ -1,37 +1,39 @@
-import Head from 'next/head'
+import { getSession } from 'next-auth/client'
 import { Component } from 'react'
 import styles from '../styles/Home.module.css'
 import { getCities } from './api/cities'
-import { DropdownCities } from './components/DropdownCities'
+import { DropdownCities } from './components/dropdowncities'
+import Header from './components/header'
 
 export default class Home extends Component {
   constructor(props){
     super(props)
+    this.state = {
+      locations: []
+    }
   }
 
   render() {
     return (
       <div className={styles.container}>
-        <Head>
-          <title>Create Next App</title>
-          <link rel="icon" href="/favicon.ico" />
-        </Head>
+        <Header />
 
         <main className={styles.main}>
-          <form action="/api/login" method="POST">
-            <input type="text" name="email" placeholder="Email"/>
-            <input type="password" name="password" placeholder="Password"/>
-            <input type="submit" name="Login" value="Login"/>
-          </form>
-          <form action="/api/login" method="POST">
-            <input type="hidden" name="isNew" value="true" />
-            <input type="text" name="email" placeholder="Email"/>
-            <input type="password" name="password" placeholder="Password"/>
-            <input type="submit" name="Signup" value="Signup"/>
-          </form>
-          <DropdownCities cities={this.props.cities}>
+          <DropdownCities cities={this.props.cities} changes={async (value) => {
+              const result = await fetch('/api/city/' + value)
+              const json = await result.json()
+              this.setState({
+                locations: Object.entries(json.d.Locations).map(location => ({
+                  key: location[0],
+                  name: location[1]
+                }))
+              })
+            }}>
             <label>Choose a city</label>
           </DropdownCities>
+          <ul>
+            { this.state.locations.map(location => <li>{location.name}</li>)}
+          </ul>
         </main>
   
       </div>
@@ -39,11 +41,13 @@ export default class Home extends Component {
   }
 }
 
-export async function getStaticProps() {
+export async function getServerSideProps(context) {
     const cities = await getCities()
+    const session = await getSession(context)
     return {
       props:{
-        cities
+        cities,
+        session
       }
     }
 }
